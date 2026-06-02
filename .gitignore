@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# CAD Viewer generated sidecars/caches
+.*.step.glb
+.*.stp.glb
+.*.stl.glb
+.*.glb
+.cache/
+
+# Temporary exports and experiments
+tmp/
+*.tmp
+*_scratch.*
+*_preview.*
