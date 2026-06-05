@@ -1,4 +1,4 @@
-"""112 x 138 x 74 mm leader mount."""
+"""112 x 138 x 56.2 mm leader mount."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from build123d import *
 
 WIDTH = 112
 DEPTH = 138
-HEIGHT = 74
+HEIGHT = 56.2
 
 with BuildPart() as leader:
     Box(WIDTH, DEPTH, HEIGHT)
