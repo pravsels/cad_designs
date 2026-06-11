@@ -44,7 +44,7 @@ Units mm. Meshes are axis-aligned. The mating interface we must preserve is the
   error (Hausdorff 13.5 mm) is the **webcam round-joint Z-bores / end housing** —
   the feature we are replacing with the Arducam interface, so it is expected.
 
-### `cam_mount_bottom` (interface reference, not re-modeled yet)
+### `cam_mount_bottom` (bottom mate reference)
 
 - Overall: 37.4 x 230.95 x 93.02; solid (genus 0).
 - Big top bores along Z: dia 25.0 and 13.98 (cable/feature pass-through).
@@ -75,15 +75,34 @@ circle. Scored vs `reference/cam_mount_top.stl` (`stl_compare --align none`):
 median **0.37 mm**, volume delta **8%** — concentrated in the still-unmodeled
 webcam round joint (to be replaced) and the far-end tray.
 
+### `cam_mount_bottom` parametric model (`cam_mount_bottom.py` -> `cam_mount_bottom.step`)
+
+Interface-first reconstruction from measured sections. Captures: overall bbox
+(37.4 x 230.95 x 93.02); chamfered long body planes; joint-end envelope; far-end
+slotted frame; and measured side M2 blind-hole positions. The clipped round
+pass-through wall near y=3.6 is still approximate because the STL's 25.0 /
+13.98 mm cylindrical detections are not a simple open cylinder in the end
+envelope. Scored vs `reference/cam_mount_bottom.stl`
+(`stl_compare --align none --samples 60000`): median **0.388 mm**, mean
+**0.543 mm**, 95th **0.953 mm**, volume delta **0.24%**. A measured waisted
+joint-side profile was tested and rejected because it removed too much material;
+the remaining extra joint-end plate is the next detail to solve with a better
+feature model.
+
+Temporary Viewer comparison assets can be regenerated locally from the reference
+and generated STLs; they are not part of the durable source for this pass.
+
 ## Status
 
 - [x] Reference STLs imported and measured
 - [x] `cam_mount_top` body + joint-end H-channel modeled parametrically
 - [x] Linear-joint teardrop M2 screw holes (point inward toward center) modeled
+- [x] `cam_mount_bottom` interface-first body + joint envelope modeled parametrically
+- [x] Original/generated bottom and four-part top/bottom Viewer comparisons generated locally
 - [ ] Measure + model the far-end (y~230) tray + holes (2.18/2.93/4.68/5.45)
 - [ ] Confirm the linear-joint screw pattern matches `cam_mount_bottom` (mating fit)
 - [ ] Replace the 12.2 webcam round joint with the Arducam module interface
-- [ ] Export STEP + STL, validate fit against `reference/cam_mount_bottom.stl`
+- [x] Export bottom STEP + STL, score against `reference/cam_mount_bottom.stl`
 
 ## Handoff (for the next agent)
 
@@ -103,13 +122,24 @@ score, then eyeball a render:
 .venv/bin/python ../tools/make_glb.py cam_mount_top.step
 ```
 
+Bottom build + review:
+
+```bash
+.venv/bin/python cam_mount_bottom.py --out cam_mount_bottom.step --stl-out cam_mount_bottom.stl
+.venv/bin/python ../tools/stl_compare.py reference/cam_mount_bottom.stl cam_mount_bottom.stl \
+  --samples 60000 --align none
+```
+
 build123d gotchas hit while writing `cam_mount_top.py`:
 - Pass plain `float`s to `Polyline` — numpy scalars make `make_face` raise
   "No objects to create a hull".
 - Don't wrap `BuildLine`/`make_face` in a helper function; the implicit builder
   context doesn't propagate, so keep those sketch blocks inline.
 
-Open items, roughly in order: far-end (y~230) tray + its 4 holes; confirm the
-teardrop screw pattern actually mates with `cam_mount_bottom`; then replace the
-webcam round Z-joint with the Arducam module interface (that's the whole point of
-this part). The 8% volume delta is almost entirely that unmodeled joint + tray.
+Open items, roughly in order: inspect regenerated original/generated bottom and
+four-part top/bottom comparisons; refine the bottom far-end frame detail called
+out during review; confirm the teardrop screw pattern actually mates with
+`cam_mount_bottom`; far-end (y~230) tray + its 4 holes on the top; then replace
+the webcam round Z-joint with the Arducam module interface (that's the whole
+point of this part). The top's 8% volume delta is almost entirely that unmodeled
+joint + tray.
