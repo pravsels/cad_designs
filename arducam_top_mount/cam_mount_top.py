@@ -21,6 +21,8 @@ from pathlib import Path
 
 import numpy as np
 from build123d import (
+    Align,
+    Axis,
     BuildLine,
     BuildPart,
     BuildSketch,
@@ -28,12 +30,19 @@ from build123d import (
     Polyline,
     RectangleRounded,
     Box,
+    Cylinder,
+    Face,
+    Location,
+    Solid,
     export_step,
     export_stl,
     extrude,
+    import_step,
     loft,
     make_face,
 )
+from OCP.BRepBuilderAPI import BRepBuilderAPI_GTransform
+from OCP.gp import gp_GTrsf, gp_Mat
 
 # --- measured parameters (mm) -------------------------------------------------
 BODY_X = 25.40        # width  (bbox X)
@@ -59,6 +68,24 @@ HALF_X = BODY_X / 2
 WEB_HALF_X = 7.70        # web spans x = +/-7.7 (gap between the legs)
 WEB_HALF_Z = 10.31       # web height: z = +/-10.31 (pocket starts above/below)
 CHANNEL_Y = 8.0          # pockets run y=0 -> 8 (back wall at y=8)
+
+# Arducam B0283 interface copied from cube_mount/cube_mount_arducam.py.
+ARDUCAM_PAD_X = 50.0
+ARDUCAM_PAD_Y = 50.0
+ARDUCAM_PAD_T = 4.0
+ARDUCAM_POCKET_DEPTH = 2.0
+ARDUCAM_POCKET_SIZE = 42.6
+_PCB_X = 42.2723
+_PCB_Z = 42.2705
+_SCALE_X = ARDUCAM_POCKET_SIZE / _PCB_X
+_SCALE_Z = ARDUCAM_POCKET_SIZE / _PCB_Z
+PEG_POSITIONS_B0283 = [
+    (+12.996, +18.135),
+    (+12.996, -18.135),
+    (-12.996, +18.135),
+    (-12.996, -18.135),
+]
+PEG_OD = 2.7
 
 
 def _teardrop_pts(r, cy, cz, point_sign, n=22):
@@ -109,6 +136,53 @@ def _td_drill(cz):
     return d.part
 
 
+def _arducam_pocket_tool(face_y: float, center_z: float):
+    """B0283 bottom-outline pocket cutter, oriented into the far +Y end face."""
+    b0283_path = Path(__file__).resolve().parents[1] / "cube_mount" / "B0283_NAUO7.STEP"
+    b0283 = import_step(b0283_path)
+    bottom_face = [
+        f for f in b0283.faces()
+        if abs(f.center().Y - (-3.0)) < 0.01
+        and f.normal_at(f.center()).Y < -0.9
+        and f.area > 500
+    ][0]
+    outline_face = Face(max(bottom_face.wires(), key=lambda w: w.length))
+    tool = extrude(outline_face, amount=ARDUCAM_POCKET_DEPTH)
+
+    gt = gp_GTrsf()
+    gt.SetVectorialPart(gp_Mat(
+        _SCALE_X, 0, 0,
+        0, 1.0, 0,
+        0, 0, _SCALE_Z,
+    ))
+    tool = Solid(BRepBuilderAPI_GTransform(tool.wrapped, gt, True).Shape())
+
+    # First build the same horizontal top-pocket cutter as cube_mount_arducam:
+    # X stays X, B0283 Z maps to local -Y, and depth is local -Z.
+    tool = tool.rotate(Axis.X, 90)
+    bb = tool.bounding_box()
+    tool = tool.translate((0, 0, -bb.max.Z))
+
+    # Rotate the local top pocket onto the vertical far end face. Local depth
+    # (-Z) maps to inward -Y; local footprint Y maps to mount Z.
+    tool = tool.rotate(Axis.X, -90)
+    return tool.translate((0, face_y, center_z))
+
+
+def _arducam_pegs(face_y: float, center_z: float):
+    pegs = []
+    floor_y = face_y - ARDUCAM_POCKET_DEPTH
+    for bx, bz in PEG_POSITIONS_B0283:
+        peg = Cylinder(
+            PEG_OD / 2,
+            ARDUCAM_POCKET_DEPTH,
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        )
+        peg = peg.rotate(Axis.X, -90)
+        pegs.append(peg.locate(Location((bx, floor_y, center_z + bz))))
+    return pegs
+
+
 def build():
     # Solid filleted bar: sketch the XZ cross-section, extrude along Y.
     with BuildPart() as part:
@@ -130,6 +204,16 @@ def build():
     # Teardrop M2 linear-joint screw holes through the legs (point toward center).
     for z in (SCREW_Z, -SCREW_Z):
         solid = solid - _td_drill(z)
+
+    # Far-end Arducam pad. The original webcam joint is intentionally replaced by
+    # a B0283 pocket/peg interface copied from cube_mount_arducam.py.
+    face_y = BODY_LEN + ARDUCAM_PAD_T
+    pad = Box(ARDUCAM_PAD_X, ARDUCAM_PAD_T, ARDUCAM_PAD_Y)
+    pad = pad.translate((0, BODY_LEN + ARDUCAM_PAD_T / 2, 0))
+    solid = solid + pad
+    solid = solid - _arducam_pocket_tool(face_y, 0)
+    for peg in _arducam_pegs(face_y, 0):
+        solid = solid + peg
     return solid
 
 

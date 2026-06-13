@@ -71,23 +71,18 @@ joint-end H-channel (two side legs + central web, pockets cut from the +/-Z
 faces); and the linear-joint **teardrop** M2 screw holes. The teardrops are
 self-supporting print holes whose point aims **inward toward the centerline**
 (z=0): neck circle ~dia 2.14 opening to ~3.78 at each face, apex ~1.4*r past the
-circle. Scored vs `reference/cam_mount_top.stl` (`stl_compare --align none`):
-median **0.37 mm**, volume delta **8%** — concentrated in the still-unmodeled
-webcam round joint (to be replaced) and the far-end tray.
+circle.
 
-### `cam_mount_bottom` parametric model (`cam_mount_bottom.py` -> `cam_mount_bottom.step`)
+The far end now replaces the webcam round joint with a centered Arducam B0283
+end-face interface copied from `../cube_mount/cube_mount_arducam.py`: a
+50 x 50 x 4 mm pad, 42.6 mm B0283 outline pocket, 2 mm pocket depth, and four
+2.7 mm pegs at the measured B0283 mounting-hole positions.
 
-Interface-first reconstruction from measured sections. Captures: overall bbox
-(37.4 x 230.95 x 93.02); chamfered long body planes; joint-end envelope; far-end
-slotted frame; and measured side M2 blind-hole positions. The clipped round
-pass-through wall near y=3.6 is still approximate because the STL's 25.0 /
-13.98 mm cylindrical detections are not a simple open cylinder in the end
-envelope. Scored vs `reference/cam_mount_bottom.stl`
-(`stl_compare --align none --samples 60000`): median **0.388 mm**, mean
-**0.543 mm**, 95th **0.953 mm**, volume delta **0.24%**. A measured waisted
-joint-side profile was tested and rejected because it removed too much material;
-the remaining extra joint-end plate is the next detail to solve with a better
-feature model.
+### `cam_mount_bottom` reference
+
+The bottom is not a generated deliverable for this design. Keep
+`reference/cam_mount_bottom.stl` as the mating reference for the top mount's
+linear joint and screw pattern.
 
 Temporary Viewer comparison assets can be regenerated locally from the reference
 and generated STLs; they are not part of the durable source for this pass.
@@ -97,12 +92,9 @@ and generated STLs; they are not part of the durable source for this pass.
 - [x] Reference STLs imported and measured
 - [x] `cam_mount_top` body + joint-end H-channel modeled parametrically
 - [x] Linear-joint teardrop M2 screw holes (point inward toward center) modeled
-- [x] `cam_mount_bottom` interface-first body + joint envelope modeled parametrically
-- [x] Original/generated bottom and four-part top/bottom Viewer comparisons generated locally
-- [ ] Measure + model the far-end (y~230) tray + holes (2.18/2.93/4.68/5.45)
+- [x] Replace the 12.2 webcam round joint with the Arducam B0283 end-face interface
 - [ ] Confirm the linear-joint screw pattern matches `cam_mount_bottom` (mating fit)
-- [ ] Replace the 12.2 webcam round joint with the Arducam module interface
-- [x] Export bottom STEP + STL, score against `reference/cam_mount_bottom.stl`
+- [ ] Decide whether the original far-end tray holes remain useful with the Arducam pad
 
 ## Handoff (for the next agent)
 
@@ -118,16 +110,6 @@ score, then eyeball a render:
 # shaded multi-angle render; --crop-axis y --crop-max 30 isolates the joint end
 .venv/bin/python ../tools/render_mesh.py reference/cam_mount_top.stl /tmp/cmt.stl \
   --views 4 --elev 8 --out /tmp/cmp.png
-# regenerate the viewer GLB sidecar after editing the STEP (then hard-refresh viewer)
-.venv/bin/python ../tools/make_glb.py cam_mount_top.step
-```
-
-Bottom build + review:
-
-```bash
-.venv/bin/python cam_mount_bottom.py --out cam_mount_bottom.step --stl-out cam_mount_bottom.stl
-.venv/bin/python ../tools/stl_compare.py reference/cam_mount_bottom.stl cam_mount_bottom.stl \
-  --samples 60000 --align none
 ```
 
 build123d gotchas hit while writing `cam_mount_top.py`:
@@ -136,10 +118,7 @@ build123d gotchas hit while writing `cam_mount_top.py`:
 - Don't wrap `BuildLine`/`make_face` in a helper function; the implicit builder
   context doesn't propagate, so keep those sketch blocks inline.
 
-Open items, roughly in order: inspect regenerated original/generated bottom and
-four-part top/bottom comparisons; refine the bottom far-end frame detail called
-out during review; confirm the teardrop screw pattern actually mates with
-`cam_mount_bottom`; far-end (y~230) tray + its 4 holes on the top; then replace
-the webcam round Z-joint with the Arducam module interface (that's the whole
-point of this part). The top's 8% volume delta is almost entirely that unmodeled
-joint + tray.
+Open items, roughly in order: confirm the teardrop screw pattern actually mates
+with `reference/cam_mount_bottom.stl`; refine the far-end pad if print/fit
+testing needs a smaller support footprint; and model the original far-end tray
+holes only if they remain useful with the Arducam interface.
